@@ -1,0 +1,19 @@
+execute "Build jenkins_master image" do
+  command "cd ~/chef-repo/jenkins_master/Docker && docker build -t jenkins_master ."
+  action :run
+end
+execute "Run jenkins_master container" do
+  command 'docker run -t -d -p 8080:8080 -p 2222:22 -p 50000:50000 --env "HOST_KEY=$(cat ~/.ssh/id_rsa.pub)" --name jenkins jenkins_master || docker start jenkins'
+  action :run
+end
+execute "Delete old Chef client" do
+  command "knife client delete chef-client-node -y || true"
+  action
+execute "Bootstrap jenkins_master container" do
+  command "cd ~/chef-repo/.chef && knife bootstrap chef-client -x root --node-name chef-client-node"
+  action :run
+end
+execute "Add recipe[jenkins] to jenkins_master container" do
+  command 'cd ~/chef-repo/.chef && knife node run_list add chef-client-node "recipe[jenkins]"'
+  action :run
+end
